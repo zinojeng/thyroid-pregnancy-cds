@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from 'next';
 import './globals.css';
+import { EvidenceFooter } from '@/components/EvidenceFooter';
 
 export const metadata: Metadata = {
   title: 'thypreg-cds | 孕期甲狀腺臨床決策支援',
@@ -45,14 +46,24 @@ export default function RootLayout({
         </header>
         {children}
         <footer className="border-t border-[color:var(--c-border-subtle)] bg-white mt-8 mb-[80px] lg:mb-0">
-          <div className="mx-auto max-w-[1440px] px-4 py-3 text-[11px] text-[color:var(--c-text-tertiary)] flex flex-wrap gap-x-3 gap-y-1">
-            <span>Source: 童綜合 2026/05 黃君睿 + 10-role panel review</span>
-            <span className="hidden sm:inline">·</span>
-            <span>Backend: Gemini 3.1 Flash Lite</span>
-            <span className="hidden sm:inline">·</span>
-            <a className="underline hover:text-[color:var(--c-text-primary)]" href="https://github.com/zinojeng/thyroid-pregnancy-cds" target="_blank" rel="noreferrer">
-              GitHub
-            </a>
+          <div className="mx-auto max-w-[1440px] px-4 py-4 text-[11px] text-[color:var(--c-text-tertiary)]">
+            <EvidenceFooter />
+            <div className="mt-3 pt-3 border-t border-[color:var(--c-border-subtle)] flex flex-wrap gap-x-3 gap-y-1">
+              <span>Backend: Gemini 3.1 Flash Lite</span>
+              <span className="hidden sm:inline">·</span>
+              <a
+                className="underline hover:text-[color:var(--c-text-primary)]"
+                href="https://github.com/zinojeng/thyroid-pregnancy-cds"
+                target="_blank"
+                rel="noreferrer"
+              >
+                GitHub
+              </a>
+              <span className="hidden sm:inline">·</span>
+              <span className="text-[color:var(--c-text-muted)]">
+                Slide deck: 童綜合 2026/05 黃君睿
+              </span>
+            </div>
           </div>
         </footer>
       </body>
