@@ -2,8 +2,10 @@
 
 > 孕期甲狀腺與碘營養臨床決策支援，整合自 2026/05 童綜合 黃君睿《Updates on thyroid dysfunction and iodine nutrition in pregnancy》與 10-role expert panel review。
 
-[![Deploy on Zeabur](https://zeabur.com/button.svg)](https://zeabur.com/templates/Y14EBR?referralCode=clawbot4ander-design&YOUR_REPO=https%3A%2F%2Fgithub.com%2Fclawbot4ander-design%2Fthyroid-pregnancy-cds)
-[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fclawbot4ander-design%2Fthyroid-pregnancy-cds&env=ANTHROPIC_API_KEY&envDescription=Anthropic%20API%20key%20required%20for%20Claude%20API%20calls&project-name=thyroid-pregnancy-cds&repository-name=thyroid-pregnancy-cds)
+**🔴 Live demo**: https://thypregcds.zeabur.app
+
+[![Deploy on Zeabur](https://zeabur.com/button.svg)](https://zeabur.com/templates/Y14EBR?referralCode=zinojeng&YOUR_REPO=https%3A%2F%2Fgithub.com%2Fzinojeng%2Fthyroid-pregnancy-cds)
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fzinojeng%2Fthyroid-pregnancy-cds&env=ANTHROPIC_API_KEY&envDescription=Anthropic%20API%20key%20required%20for%20Claude%20API%20calls&project-name=thyroid-pregnancy-cds&repository-name=thyroid-pregnancy-cds)
 
 兩種使用方式：
 
