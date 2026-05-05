@@ -227,7 +227,7 @@ export default function Home() {
   };
 
   return (
-    <main className="mx-auto max-w-[1440px] px-3 sm:px-4 py-3 sm:py-5 pb-[80px] lg:pb-5 overflow-x-hidden">
+    <main className="mx-auto max-w-[1440px] px-3 sm:px-4 py-3 sm:py-5 pb-[80px] lg:pb-5">
       {/* Hard-stop banner */}
       {hardStops.length > 0 && (
         <div className="mb-3 sm:mb-4 banner critical">
@@ -281,22 +281,24 @@ export default function Home() {
             mobileView === 'output' ? 'hidden lg:block' : ''
           }`}
         >
-          {/* Preset selector — horizontal scroll on mobile */}
+          {/* Preset selector — horizontal scroll on mobile, wrap on desktop */}
           <div>
-            <div className="section-label">Case presets</div>
-            <div className="preset-scroll">
-              {Object.entries(PRESETS).map(([k, v]) => (
-                <button
-                  key={k}
-                  onClick={() => loadPreset(k)}
-                  className={`btn btn-link ${activePreset === k ? 'active' : ''}`}
-                >
-                  {v.label}
+            <div className="section-label">Case presets <span className="lg:hidden font-normal normal-case tracking-normal text-[10px] text-[color:var(--c-text-muted)]">← 可左右滑 →</span></div>
+            <div className="preset-scroll-wrap">
+              <div className="preset-scroll">
+                {Object.entries(PRESETS).map(([k, v]) => (
+                  <button
+                    key={k}
+                    onClick={() => loadPreset(k)}
+                    className={`btn btn-link ${activePreset === k ? 'active' : ''}`}
+                  >
+                    {v.label}
+                  </button>
+                ))}
+                <button onClick={reset} className="btn btn-link" style={{ color: 'var(--c-critical)' }}>
+                  Clear
                 </button>
-              ))}
-              <button onClick={reset} className="btn btn-link" style={{ color: 'var(--c-critical)' }}>
-                Clear
-              </button>
+              </div>
             </div>
           </div>
 

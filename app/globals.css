@@ -247,28 +247,38 @@ textarea.input { height: auto; padding: 8px 10px; line-height: 1.5; }
   .desktop-only { display: block; }
 }
 
-/* Horizontal scroll for preset row on mobile */
+/* Horizontal scroll for preset row on mobile (within panel padding) */
 .preset-scroll {
   display: flex;
-  gap: 12px;
+  gap: 14px;
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
   scrollbar-width: none;
-  padding-bottom: 4px;
-  margin: 0 -16px;
-  padding-left: 16px;
-  padding-right: 16px;
+  padding: 2px 0 6px;
+  scroll-padding-right: 16px;
 }
 .preset-scroll::-webkit-scrollbar { display: none; }
 .preset-scroll > * { flex-shrink: 0; white-space: nowrap; }
+
+/* Visual hint: gradient fade on right edge so user knows there's more */
+.preset-scroll-wrap {
+  position: relative;
+}
+.preset-scroll-wrap::after {
+  content: '';
+  position: absolute;
+  top: 0; right: 0; bottom: 6px;
+  width: 24px;
+  pointer-events: none;
+  background: linear-gradient(to right, transparent, var(--c-surface-0));
+}
+
 @media (min-width: 768px) {
   .preset-scroll {
     flex-wrap: wrap;
     overflow-x: visible;
-    margin: 0;
-    padding-left: 0;
-    padding-right: 0;
     gap: 12px;
   }
   .preset-scroll > * { white-space: normal; }
+  .preset-scroll-wrap::after { display: none; }
 }
