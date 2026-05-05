@@ -1,8 +1,28 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import {
+  detectHardStops,
+  detectMissing,
+  flagFT4,
+  flagTPOAb,
+  flagTRAb,
+  flagTSH,
+  type FieldFlag,
+} from '@/lib/validation';
+import {
+  clearDraft,
+  deleteSession,
+  listSessions,
+  loadDraft,
+  loadSession,
+  saveDraft,
+  saveSession,
+  summarize,
+  type Session,
+} from '@/lib/sessions';
 
 const HISTORY_OPTIONS = [
   '無甲狀腺病史',
@@ -31,143 +51,71 @@ const SYMPTOM_OPTIONS = [
   'Dry skin',
 ];
 
-const PRESETS: Record<string, any> = {
-  case1: {
-    label: 'Case 1 — 早孕 TSH↓ + fT4↑ 無症狀',
-    data: {
-      age: '32',
-      gravidity: '1',
-      parity: '0',
-      gaWeeks: '7',
-      gaDays: '3',
-      history: ['無甲狀腺病史'],
-      meds: '',
-      labs: { tsh: '<0.005', ft4: '2.0' },
-      symptoms: [],
-      exam: '無 goiter、無 ophthalmopathy',
-      iodine: { iodizedSalt: '不確定', multivitamin: '不確定', seaweedFreq: '1' },
-    },
-  },
-  case2: {
-    label: 'Case 2 — HG + 生化甲亢',
-    data: {
-      age: '27',
-      gravidity: '1',
-      parity: '0',
-      gaWeeks: '9',
-      gaDays: '1',
-      history: ['無甲狀腺病史'],
-      meds: '',
-      labs: { tsh: '<0.005', ft4: '2.0' },
-      symptoms: ['Severe N/V (HG)', 'Weight loss', 'Dehydration / ketonuria'],
-      exam: '脫水、體重 ↓ 4 kg over 3 weeks',
-      iodine: { iodizedSalt: '不確定', multivitamin: '不確定', seaweedFreq: '0' },
-    },
-  },
-  case3: {
-    label: 'Case 3 — Graves on MMI 5 mg',
-    data: {
-      age: '30',
-      gravidity: '1',
-      parity: '0',
-      gaWeeks: '6',
-      gaDays: '5',
-      history: ['Known Graves disease'],
-      historyDetails: 'Graves × 2 yr',
-      meds: 'MMI 5 mg QD',
-      labs: { tsh: '0.3', ft4: '1.2' },
-      symptoms: [],
-      exam: 'diffuse goiter, no ophthalmopathy',
-      iodine: { iodizedSalt: 'Yes', multivitamin: '不確定', seaweedFreq: '1' },
-    },
-  },
-  case4: {
-    label: 'Case 4 — Total thyroidectomy on LT4 125',
-    data: {
-      age: '35',
-      gravidity: '1',
-      parity: '0',
-      gaWeeks: '10',
-      gaDays: '2',
-      history: ['Total thyroidectomy'],
-      historyDetails: 'Total thyroidectomy for benign MNG',
-      meds: 'LT4 125 µg QD',
-      labs: { tsh: '4.0', ft4: '1.0' },
-      symptoms: [],
-      iodine: { iodizedSalt: 'Yes', multivitamin: '不含 iodine', seaweedFreq: '1' },
-    },
-  },
-  case5: {
-    label: 'Case 5 — SCH (TSH 5.2)',
-    data: {
-      age: '31',
-      gravidity: '1',
-      parity: '0',
-      gaWeeks: '11',
-      gaDays: '4',
-      history: ['無甲狀腺病史'],
-      meds: '',
-      labs: { tsh: '5.2', ft4: '1.1' },
-      symptoms: [],
-      iodine: { iodizedSalt: 'Yes', multivitamin: '不含 iodine', seaweedFreq: '1' },
-    },
-  },
-  case6: {
-    label: 'Case 6 — Euthyroid + TPOAb / TgAb 強陽',
-    data: {
-      age: '30',
-      gravidity: '1',
-      parity: '0',
-      gaWeeks: '10',
-      gaDays: '2',
-      history: ['無甲狀腺病史'],
-      meds: '',
-      labs: { tsh: '2.1', ft4: '1.2', tpoab: '250', tgab: '180' },
-      symptoms: [],
-      iodine: { iodizedSalt: 'Yes', multivitamin: '不含 iodine', seaweedFreq: '2' },
-    },
-  },
-  case7: {
-    label: 'Case 7 — TFT 正常 + 無含碘 multivitamin',
-    data: {
-      age: '29',
-      gravidity: '1',
-      parity: '0',
-      gaWeeks: '14',
-      gaDays: '5',
-      history: ['無甲狀腺病史'],
-      meds: '葉酸 only',
-      labs: { tsh: '1.8', ft4: '1.1' },
-      symptoms: [],
-      iodine: { iodizedSalt: 'No (海鹽)', multivitamin: 'No', seaweedFreq: '0' },
-    },
-  },
-};
+type AnyForm = ReturnType<typeof emptyForm>;
 
-export default function Home() {
-  const [form, setForm] = useState<any>({
+function emptyForm() {
+  return {
     age: '',
     gravidity: '',
     parity: '',
     gaWeeks: '',
     gaDays: '',
-    history: [],
+    history: [] as string[],
     historyDetails: '',
     meds: '',
     labs: { tsh: '', ft4: '', tt4: '', tt3: '', tpoab: '', tgab: '', trab: '', other: '' },
-    symptoms: [],
+    symptoms: [] as string[],
     exam: '',
     iodine: { iodizedSalt: '', multivitamin: '', seaweedFreq: '' },
     obHistory: '',
     freeText: '',
-  });
+  };
+}
+
+const PRESETS: Record<string, { label: string; data: Partial<AnyForm> }> = {
+  case1: { label: 'C1 早孕 TSH↓ + fT4↑', data: { age: '32', gravidity: '1', parity: '0', gaWeeks: '7', gaDays: '3', history: ['無甲狀腺病史'], labs: { tsh: '<0.005', ft4: '2.0', tt4: '', tt3: '', tpoab: '', tgab: '', trab: '', other: '' }, symptoms: [], exam: '無 goiter, no ophthalmopathy', iodine: { iodizedSalt: '不確定', multivitamin: '不確定', seaweedFreq: '1' } } },
+  case2: { label: 'C2 HG + 生化甲亢', data: { age: '27', gravidity: '1', parity: '0', gaWeeks: '9', gaDays: '1', history: ['無甲狀腺病史'], labs: { tsh: '<0.005', ft4: '2.0', tt4: '', tt3: '', tpoab: '', tgab: '', trab: '', other: '' }, symptoms: ['Severe N/V (HG)', 'Weight loss', 'Dehydration / ketonuria'], exam: '脫水, 體重下降 4kg/3wk', iodine: { iodizedSalt: '不確定', multivitamin: '不確定', seaweedFreq: '0' } } },
+  case3: { label: 'C3 Graves on MMI 5mg', data: { age: '30', gravidity: '1', parity: '0', gaWeeks: '6', gaDays: '5', history: ['Known Graves disease'], historyDetails: 'Graves × 2 yr', meds: 'MMI 5 mg QD', labs: { tsh: '0.3', ft4: '1.2', tt4: '', tt3: '', tpoab: '', tgab: '', trab: '', other: '' }, symptoms: [], exam: 'diffuse goiter, no ophthalmopathy', iodine: { iodizedSalt: 'Yes', multivitamin: '不確定', seaweedFreq: '1' } } },
+  case4: { label: 'C4 Thyroidectomy + LT4', data: { age: '35', gravidity: '1', parity: '0', gaWeeks: '10', gaDays: '2', history: ['Total thyroidectomy'], historyDetails: 'Total thyroidectomy for benign MNG', meds: 'LT4 125 µg QD', labs: { tsh: '4.0', ft4: '1.0', tt4: '', tt3: '', tpoab: '', tgab: '', trab: '', other: '' }, symptoms: [], exam: '', iodine: { iodizedSalt: 'Yes', multivitamin: '不含 iodine', seaweedFreq: '1' } } },
+  case5: { label: 'C5 SCH (TSH 5.2)', data: { age: '31', gravidity: '1', parity: '0', gaWeeks: '11', gaDays: '4', history: ['無甲狀腺病史'], labs: { tsh: '5.2', ft4: '1.1', tt4: '', tt3: '', tpoab: '', tgab: '', trab: '', other: '' }, symptoms: [], exam: '', iodine: { iodizedSalt: 'Yes', multivitamin: '不含 iodine', seaweedFreq: '1' } } },
+  case6: { label: 'C6 Euthyroid TPOAb+', data: { age: '30', gravidity: '1', parity: '0', gaWeeks: '10', gaDays: '2', history: ['無甲狀腺病史'], labs: { tsh: '2.1', ft4: '1.2', tt4: '', tt3: '', tpoab: '250', tgab: '180', trab: '', other: '' }, symptoms: [], exam: '', iodine: { iodizedSalt: 'Yes', multivitamin: '不含 iodine', seaweedFreq: '2' } } },
+  case7: { label: 'C7 Iodine gap', data: { age: '29', gravidity: '1', parity: '0', gaWeeks: '14', gaDays: '5', history: ['無甲狀腺病史'], meds: '葉酸 only', labs: { tsh: '1.8', ft4: '1.1', tt4: '', tt3: '', tpoab: '', tgab: '', trab: '', other: '' }, symptoms: [], exam: '', iodine: { iodizedSalt: 'No (海鹽)', multivitamin: 'No', seaweedFreq: '0' } } },
+};
+
+export default function Home() {
+  const [form, setForm] = useState<AnyForm>(emptyForm());
   const [loading, setLoading] = useState(false);
   const [output, setOutput] = useState<string>('');
   const [error, setError] = useState<string>('');
+  const [sessions, setSessions] = useState<Session[]>([]);
+  const [activePreset, setActivePreset] = useState<string>('');
+  const draftDebounce = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Load draft on mount
+  useEffect(() => {
+    (async () => {
+      const d = await loadDraft();
+      if (d && Object.keys(d).length) setForm({ ...emptyForm(), ...d });
+      const s = await listSessions();
+      setSessions(s);
+    })();
+  }, []);
+
+  // Debounced auto-save draft
+  useEffect(() => {
+    if (draftDebounce.current) clearTimeout(draftDebounce.current);
+    draftDebounce.current = setTimeout(() => {
+      saveDraft(form).catch(() => {});
+    }, 600);
+    return () => {
+      if (draftDebounce.current) clearTimeout(draftDebounce.current);
+    };
+  }, [form]);
 
   const update = (path: string, value: any) => {
-    setForm((prev: any) => {
-      const next = { ...prev };
+    setActivePreset('');
+    setForm((prev) => {
+      const next: any = { ...prev };
       const parts = path.split('.');
       let target = next;
       for (let i = 0; i < parts.length - 1; i++) {
@@ -180,25 +128,35 @@ export default function Home() {
   };
 
   const toggleArr = (path: string, value: string) => {
-    setForm((prev: any) => {
-      const arr: string[] = path.split('.').reduce((o, k) => o[k], prev) || [];
-      const next = arr.includes(value) ? arr.filter((x) => x !== value) : [...arr, value];
-      const out = { ...prev };
+    setActivePreset('');
+    setForm((prev) => {
+      const arr: string[] = path.split('.').reduce((o: any, k) => o[k], prev) || [];
+      const updated = arr.includes(value) ? arr.filter((x) => x !== value) : [...arr, value];
+      const out: any = { ...prev };
       const parts = path.split('.');
       let target = out;
       for (let i = 0; i < parts.length - 1; i++) {
         target[parts[i]] = { ...target[parts[i]] };
         target = target[parts[i]];
       }
-      target[parts.at(-1)!] = next;
+      target[parts.at(-1)!] = updated;
       return out;
     });
   };
 
   const loadPreset = (key: string) => {
-    setForm((prev: any) => ({ ...prev, ...PRESETS[key].data }));
+    setActivePreset(key);
+    setForm({ ...emptyForm(), ...PRESETS[key].data } as AnyForm);
     setOutput('');
     setError('');
+  };
+
+  const reset = () => {
+    setActivePreset('');
+    setForm(emptyForm());
+    setOutput('');
+    setError('');
+    clearDraft().catch(() => {});
   };
 
   const submit = async () => {
@@ -224,211 +182,363 @@ export default function Home() {
     }
   };
 
+  const onSaveSession = async () => {
+    const label = window.prompt('幫這位病人取個 label（不含真實姓名）', summarize(form)) || '';
+    if (!label) return;
+    await saveSession(label, form, output || undefined);
+    setSessions(await listSessions());
+  };
+
+  const onLoadSession = async (id: string) => {
+    const s = await loadSession(id);
+    if (!s) return;
+    setForm({ ...emptyForm(), ...s.form });
+    setOutput(s.output || '');
+    setError('');
+    setActivePreset('');
+  };
+
+  const onDeleteSession = async (id: string) => {
+    if (!window.confirm('確定刪除此 session？')) return;
+    await deleteSession(id);
+    setSessions(await listSessions());
+  };
+
+  // -------- Validation derived --------
+  const flags = useMemo(
+    () => ({
+      tsh: flagTSH(form.labs.tsh, form.gaWeeks),
+      ft4: flagFT4(form.labs.ft4, form.gaWeeks),
+      tpoab: flagTPOAb(form.labs.tpoab),
+      trab: flagTRAb(form.labs.trab, form.gaWeeks),
+    }),
+    [form.labs.tsh, form.labs.ft4, form.labs.tpoab, form.labs.trab, form.gaWeeks]
+  );
+
+  const hardStops = useMemo(() => detectHardStops(form), [form]);
+  const missing = useMemo(() => detectMissing(form), [form]);
+
   return (
-    <main className="mx-auto max-w-6xl px-4 py-6">
-      <div className="grid lg:grid-cols-2 gap-6">
+    <main className="mx-auto max-w-[1440px] px-4 py-5">
+      {/* Hard-stop banner */}
+      {hardStops.length > 0 && (
+        <div className="mb-4 banner critical">
+          <span className="font-semibold whitespace-nowrap">🚨 Hard stop</span>
+          <div className="flex-1 space-y-1">
+            {hardStops.map((s, i) => (
+              <div key={i}>
+                <strong>{s.trigger}</strong> — {s.detail}
+              </div>
+            ))}
+            <div className="text-xs opacity-80 mt-1">建議直接請主治評估，不應僅依此 CDS 建議行動。</div>
+          </div>
+        </div>
+      )}
+
+      <div className="grid gap-5 lg:grid-cols-[400px_1fr_280px]">
         {/* LEFT: Input form */}
-        <section className="bg-white rounded-lg border border-slate-200 p-5 space-y-4">
+        <section className="panel p-4 space-y-5 max-h-[calc(100vh-120px)] overflow-y-auto sticky top-4 self-start">
+          {/* Preset selector */}
           <div>
-            <h2 className="font-semibold text-slate-900 mb-2">病人資料輸入</h2>
-            <div className="flex flex-wrap gap-2 mb-2">
+            <div className="section-label">Case presets</div>
+            <div className="flex flex-wrap gap-x-3 gap-y-1">
               {Object.entries(PRESETS).map(([k, v]) => (
                 <button
                   key={k}
                   onClick={() => loadPreset(k)}
-                  className="text-xs px-2 py-1 rounded bg-slate-100 hover:bg-slate-200 border border-slate-300"
+                  className={`btn btn-link ${activePreset === k ? 'active' : ''}`}
                 >
-                  {(v as any).label}
+                  {v.label}
                 </button>
               ))}
-              <button
-                onClick={() => {
-                  setForm({
-                    age: '', gravidity: '', parity: '', gaWeeks: '', gaDays: '',
-                    history: [], historyDetails: '', meds: '',
-                    labs: { tsh: '', ft4: '', tt4: '', tt3: '', tpoab: '', tgab: '', trab: '', other: '' },
-                    symptoms: [], exam: '',
-                    iodine: { iodizedSalt: '', multivitamin: '', seaweedFreq: '' },
-                    obHistory: '', freeText: '',
-                  });
-                  setOutput(''); setError('');
-                }}
-                className="text-xs px-2 py-1 rounded bg-rose-50 hover:bg-rose-100 border border-rose-200"
-              >
+              <button onClick={reset} className="btn btn-link" style={{ color: 'var(--c-critical)' }}>
                 Clear
               </button>
             </div>
           </div>
 
           {/* Demographics */}
-          <div className="grid grid-cols-5 gap-2">
-            <Field label="Age" value={form.age} onChange={(v) => update('age', v)} placeholder="32" />
-            <Field label="G" value={form.gravidity} onChange={(v) => update('gravidity', v)} placeholder="1" />
-            <Field label="P" value={form.parity} onChange={(v) => update('parity', v)} placeholder="0" />
-            <Field label="GA wk" value={form.gaWeeks} onChange={(v) => update('gaWeeks', v)} placeholder="10" />
-            <Field label="GA d" value={form.gaDays} onChange={(v) => update('gaDays', v)} placeholder="2" />
+          <div>
+            <div className="section-label">Demographics</div>
+            <div className="grid grid-cols-5 gap-2">
+              <Field label="Age" value={form.age} onChange={(v) => update('age', v)} placeholder="32" />
+              <Field label="G" value={form.gravidity} onChange={(v) => update('gravidity', v)} placeholder="1" />
+              <Field label="P" value={form.parity} onChange={(v) => update('parity', v)} placeholder="0" />
+              <Field label="GA wk" value={form.gaWeeks} onChange={(v) => update('gaWeeks', v)} placeholder="10" tabular />
+              <Field label="GA d" value={form.gaDays} onChange={(v) => update('gaDays', v)} placeholder="2" tabular />
+            </div>
           </div>
 
           {/* History */}
-          <Section title="病史">
-            <div className="grid grid-cols-2 gap-1">
+          <div>
+            <div className="section-label">病史</div>
+            <div className="grid grid-cols-2 gap-x-3 gap-y-1 mb-2">
               {HISTORY_OPTIONS.map((h) => (
-                <Check key={h} label={h} checked={form.history.includes(h)} onChange={() => toggleArr('history', h)} />
+                <Cbx key={h} label={h} checked={form.history.includes(h)} onChange={() => toggleArr('history', h)} />
               ))}
             </div>
-            <Field label="病史補充" value={form.historyDetails} onChange={(v) => update('historyDetails', v)} placeholder="e.g. Graves × 2 yr, total thyroidectomy 2024" />
-          </Section>
+            <Field label="病史補充" value={form.historyDetails} onChange={(v) => update('historyDetails', v)} placeholder="e.g. Graves × 2 yr" />
+          </div>
 
           {/* Meds */}
-          <Section title="目前用藥">
+          <div>
+            <div className="section-label">目前用藥</div>
             <textarea
-              className="w-full border border-slate-300 rounded px-2 py-1 text-sm"
+              className="input"
               rows={2}
               value={form.meds}
               onChange={(e) => update('meds', e.target.value)}
               placeholder="LT4 125 µg QD; MMI 5 mg QD; prenatal vitamin (含碘?); Fe..."
             />
-          </Section>
+          </div>
 
           {/* Labs */}
-          <Section title="實驗室">
+          <div>
+            <div className="section-label">Labs</div>
             <div className="grid grid-cols-2 gap-2">
-              <Field label="TSH (mIU/L)" value={form.labs.tsh} onChange={(v) => update('labs.tsh', v)} placeholder="5.2" />
-              <Field label="fT4 (ng/dL)" value={form.labs.ft4} onChange={(v) => update('labs.ft4', v)} placeholder="1.1" />
-              <Field label="TT4" value={form.labs.tt4} onChange={(v) => update('labs.tt4', v)} placeholder="" />
-              <Field label="TT3" value={form.labs.tt3} onChange={(v) => update('labs.tt3', v)} placeholder="" />
-              <Field label="TPOAb (IU/mL)" value={form.labs.tpoab} onChange={(v) => update('labs.tpoab', v)} placeholder="" />
-              <Field label="TgAb (IU/mL)" value={form.labs.tgab} onChange={(v) => update('labs.tgab', v)} placeholder="" />
-              <Field label="TRAb / TSI" value={form.labs.trab} onChange={(v) => update('labs.trab', v)} placeholder="" />
+              <FieldFlagged label="TSH (mIU/L)" value={form.labs.tsh} onChange={(v) => update('labs.tsh', v)} placeholder="5.2" flag={flags.tsh} tabular />
+              <FieldFlagged label="fT4 (ng/dL)" value={form.labs.ft4} onChange={(v) => update('labs.ft4', v)} placeholder="1.1" flag={flags.ft4} tabular />
+              <Field label="TT4" value={form.labs.tt4} onChange={(v) => update('labs.tt4', v)} placeholder="" tabular />
+              <Field label="TT3" value={form.labs.tt3} onChange={(v) => update('labs.tt3', v)} placeholder="" tabular />
+              <FieldFlagged label="TPOAb (IU/mL)" value={form.labs.tpoab} onChange={(v) => update('labs.tpoab', v)} placeholder="" flag={flags.tpoab} tabular />
+              <Field label="TgAb (IU/mL)" value={form.labs.tgab} onChange={(v) => update('labs.tgab', v)} placeholder="" tabular />
+              <FieldFlagged label="TRAb / TSI" value={form.labs.trab} onChange={(v) => update('labs.trab', v)} placeholder="" flag={flags.trab} tabular />
               <Field label="Other" value={form.labs.other} onChange={(v) => update('labs.other', v)} placeholder="UIC, etc." />
             </div>
-          </Section>
+          </div>
 
-          {/* Symptoms / exam */}
-          <Section title="症狀與身體檢查">
-            <div className="grid grid-cols-2 gap-1 mb-2">
+          {/* Symptoms */}
+          <div>
+            <div className="section-label">症狀 / 身體檢查</div>
+            <div className="grid grid-cols-2 gap-x-3 gap-y-1 mb-2">
               {SYMPTOM_OPTIONS.map((s) => (
-                <Check key={s} label={s} checked={form.symptoms.includes(s)} onChange={() => toggleArr('symptoms', s)} />
+                <Cbx key={s} label={s} checked={form.symptoms.includes(s)} onChange={() => toggleArr('symptoms', s)} />
               ))}
             </div>
             <textarea
-              className="w-full border border-slate-300 rounded px-2 py-1 text-sm"
+              className="input"
               rows={2}
               value={form.exam}
               onChange={(e) => update('exam', e.target.value)}
-              placeholder="goiter / ophthalmopathy / HR / BP / 其他身體檢查"
+              placeholder="goiter / ophthalmopathy / HR / BP / 其他"
             />
-          </Section>
+          </div>
 
           {/* Iodine */}
-          <Section title="Iodine 攝取（三題篩查）">
-            <div className="grid grid-cols-1 gap-2">
+          <div>
+            <div className="section-label">Iodine 三題篩查</div>
+            <div className="space-y-2">
               <Field label="家裡用加碘鹽？" value={form.iodine.iodizedSalt} onChange={(v) => update('iodine.iodizedSalt', v)} placeholder="Yes / No / 不確定" />
               <Field label="孕婦維他命含 iodine？" value={form.iodine.multivitamin} onChange={(v) => update('iodine.multivitamin', v)} placeholder="Yes (___ µg) / No / 不確定" />
-              <Field label="海帶 / 海苔（次/週）" value={form.iodine.seaweedFreq} onChange={(v) => update('iodine.seaweedFreq', v)} placeholder="0–7" />
+              <Field label="海帶 / 海苔 (次/週)" value={form.iodine.seaweedFreq} onChange={(v) => update('iodine.seaweedFreq', v)} placeholder="0–7" tabular />
             </div>
-          </Section>
+          </div>
 
           {/* OB Hx */}
-          <Section title="產科 / 自體免疫病史">
+          <div>
+            <div className="section-label">產科 / 自體免疫</div>
             <textarea
-              className="w-full border border-slate-300 rounded px-2 py-1 text-sm"
+              className="input"
               rows={2}
               value={form.obHistory}
               onChange={(e) => update('obHistory', e.target.value)}
-              placeholder="previous miscarriage, ART/IVF, recurrent implantation failure, GDM, PE, autoimmune Dx..."
+              placeholder="previous miscarriage, ART/IVF, recurrent implantation failure..."
             />
-          </Section>
+          </div>
 
           {/* Free text */}
-          <Section title="補充說明 / Free text">
+          <div>
+            <div className="section-label">補充說明</div>
             <textarea
-              className="w-full border border-slate-300 rounded px-2 py-1 text-sm"
+              className="input"
               rows={3}
               value={form.freeText}
               onChange={(e) => update('freeText', e.target.value)}
               placeholder="任何不在表單中的補充資訊..."
             />
-          </Section>
+          </div>
 
-          <button
-            onClick={submit}
-            disabled={loading}
-            className="w-full bg-clinical-600 hover:bg-clinical-700 text-white font-medium py-2 rounded disabled:bg-slate-400"
-          >
-            {loading ? '⏳ 分析中（GPT-5.5 思考中）...' : '🧠 開始分析'}
-          </button>
+          {/* Action bar */}
+          <div className="flex gap-2 sticky bottom-0 bg-white pt-2 -mx-4 px-4 border-t border-[color:var(--c-border-subtle)]">
+            <button onClick={submit} disabled={loading} className="btn btn-primary flex-1">
+              {loading ? '分析中…' : '🧠 開始分析'}
+            </button>
+            <button onClick={onSaveSession} className="btn btn-ghost" title="Save this case">
+              💾 Save
+            </button>
+          </div>
         </section>
 
-        {/* RIGHT: Output */}
-        <section className="bg-white rounded-lg border border-slate-200 p-5">
-          <h2 className="font-semibold text-slate-900 mb-3">CDS 建議輸出</h2>
+        {/* CENTER: Output */}
+        <section className="panel p-5 min-h-[400px]">
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="text-[15px] font-semibold">CDS Recommendation</h2>
+            {output && (
+              <button
+                className="btn btn-ghost btn-sm"
+                onClick={() => navigator.clipboard.writeText(output)}
+                title="Copy markdown"
+              >
+                📋 Copy
+              </button>
+            )}
+          </div>
+
+          {/* Missing-data chips */}
+          {missing.length > 0 && (
+            <div className="banner warning mb-3">
+              <span className="font-semibold whitespace-nowrap">缺資料</span>
+              <div className="flex flex-wrap gap-1.5">
+                {missing.map((m, i) => (
+                  <span key={i} className="chip warning" title={m.why}>
+                    {m.field}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+
           {error && (
-            <div className="bg-rose-50 border border-rose-200 text-rose-800 text-sm rounded px-3 py-2 mb-3">
-              ❌ {error}
+            <div className="banner critical mb-3">
+              <span>❌</span>
+              <div>{error}</div>
             </div>
           )}
+
           {!output && !loading && !error && (
-            <div className="text-sm text-slate-500">
+            <div className="text-sm text-[color:var(--c-text-tertiary)] py-12 text-center">
               填寫左側資料 → 按「開始分析」<br />
-              建議使用上方 Preset 快速試跑（對應投影片 7 個 case）。
+              或點上方 <span className="chip muted">C1–C7</span> Preset 快速試跑。
             </div>
           )}
+
           {loading && (
-            <div className="text-sm text-slate-500">
-              ⏳ 模型正在依 7-section template 生成建議，約需 20–60 秒...
+            <div className="text-sm text-[color:var(--c-text-tertiary)] py-8">
+              ⏳ GPT-5.5 正在依 7-section template 生成建議，約需 20–60 秒…
             </div>
           )}
+
           {output && (
-            <div className="markdown-output text-sm">
+            <div className="markdown-output">
               <ReactMarkdown remarkPlugins={[remarkGfm]}>{output}</ReactMarkdown>
             </div>
           )}
         </section>
+
+        {/* RIGHT: Session rail */}
+        <aside className="panel p-4 max-h-[calc(100vh-120px)] overflow-y-auto sticky top-4 self-start hidden lg:block">
+          <div className="section-label">Saved sessions ({sessions.length})</div>
+          {sessions.length === 0 && (
+            <div className="text-xs text-[color:var(--c-text-tertiary)] py-4">
+              還沒有儲存的 session。<br />
+              填完表單後點 「💾 Save」可保存。<br /><br />
+              <span className="text-[color:var(--c-warning)]">🔒 資料只存於本機瀏覽器 IndexedDB，不上傳。</span>
+            </div>
+          )}
+          <ul className="space-y-1">
+            {sessions.map((s) => (
+              <li key={s.id} className="border border-[color:var(--c-border-subtle)] rounded p-2 hover:bg-[color:var(--c-surface-1)]">
+                <div className="flex items-start gap-2">
+                  <button onClick={() => onLoadSession(s.id)} className="flex-1 text-left">
+                    <div className="text-[12.5px] font-semibold truncate">{s.label}</div>
+                    <div className="text-[11px] text-[color:var(--c-text-tertiary)] truncate font-mono">{summarize(s.form)}</div>
+                    <div className="text-[10px] text-[color:var(--c-text-muted)] mt-0.5 tabular">
+                      {new Date(s.updatedAt).toLocaleString('zh-TW', { dateStyle: 'short', timeStyle: 'short' })}
+                    </div>
+                  </button>
+                  <button
+                    onClick={() => onDeleteSession(s.id)}
+                    className="text-[color:var(--c-text-muted)] hover:text-[color:var(--c-critical)] text-xs px-1"
+                    title="Delete"
+                  >
+                    ✕
+                  </button>
+                </div>
+              </li>
+            ))}
+          </ul>
+        </aside>
       </div>
     </main>
   );
 }
+
+// ---------- Subcomponents ----------
 
 function Field({
   label,
   value,
   onChange,
   placeholder,
+  tabular,
 }: {
   label: string;
   value: string;
   onChange: (v: string) => void;
   placeholder?: string;
+  tabular?: boolean;
 }) {
   return (
     <label className="block">
-      <span className="block text-xs text-slate-600 mb-0.5">{label}</span>
+      <span className="input-label">{label}</span>
       <input
         type="text"
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
-        className="w-full border border-slate-300 rounded px-2 py-1 text-sm focus:outline-clinical-500"
+        className={`input ${tabular ? 'tabular' : ''}`}
       />
     </label>
   );
 }
 
-function Check({ label, checked, onChange }: { label: string; checked: boolean; onChange: () => void }) {
+function FieldFlagged({
+  label,
+  value,
+  onChange,
+  placeholder,
+  flag,
+  tabular,
+}: {
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
+  placeholder?: string;
+  flag: FieldFlag | null;
+  tabular?: boolean;
+}) {
+  const cls =
+    flag?.level === 'critical'
+      ? 'alert'
+      : flag?.level === 'warning'
+      ? 'warn'
+      : '';
   return (
-    <label className="flex items-center gap-1.5 text-xs text-slate-700">
-      <input type="checkbox" checked={checked} onChange={onChange} className="accent-clinical-600" />
-      <span>{label}</span>
+    <label className="block">
+      <span className="input-label flex items-center justify-between gap-2">
+        <span>{label}</span>
+        {flag && flag.level !== 'muted' && (
+          <span className={`chip ${flag.level}`} title={flag.hint || ''}>
+            {flag.text}
+          </span>
+        )}
+      </span>
+      <input
+        type="text"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder={placeholder}
+        className={`input ${tabular ? 'tabular' : ''} ${cls}`}
+      />
     </label>
   );
 }
 
-function Section({ title, children }: { title: string; children: React.ReactNode }) {
+function Cbx({ label, checked, onChange }: { label: string; checked: boolean; onChange: () => void }) {
   return (
-    <div>
-      <div className="text-xs font-semibold text-slate-700 mb-1">{title}</div>
-      <div className="space-y-2">{children}</div>
-    </div>
+    <label className="cbx">
+      <input type="checkbox" checked={checked} onChange={onChange} />
+      <span>{label}</span>
+    </label>
   );
 }
