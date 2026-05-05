@@ -89,6 +89,7 @@ export default function Home() {
   const [error, setError] = useState<string>('');
   const [sessions, setSessions] = useState<Session[]>([]);
   const [activePreset, setActivePreset] = useState<string>('');
+  const [sheetOpen, setSheetOpen] = useState(false);
   const draftDebounce = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Load draft on mount
@@ -218,11 +219,16 @@ export default function Home() {
   const hardStops = useMemo(() => detectHardStops(form), [form]);
   const missing = useMemo(() => detectMissing(form), [form]);
 
+  const onLoadAndCloseSheet = async (id: string) => {
+    await onLoadSession(id);
+    setSheetOpen(false);
+  };
+
   return (
-    <main className="mx-auto max-w-[1440px] px-4 py-5">
+    <main className="mx-auto max-w-[1440px] px-3 sm:px-4 py-3 sm:py-5 pb-[80px] lg:pb-5">
       {/* Hard-stop banner */}
       {hardStops.length > 0 && (
-        <div className="mb-4 banner critical">
+        <div className="mb-3 sm:mb-4 banner critical">
           <span className="font-semibold whitespace-nowrap">🚨 Hard stop</span>
           <div className="flex-1 space-y-1">
             {hardStops.map((s, i) => (
@@ -235,13 +241,13 @@ export default function Home() {
         </div>
       )}
 
-      <div className="grid gap-5 lg:grid-cols-[400px_1fr_280px]">
-        {/* LEFT: Input form */}
-        <section className="panel p-4 space-y-5 max-h-[calc(100vh-120px)] overflow-y-auto sticky top-4 self-start">
-          {/* Preset selector */}
+      <div className="grid gap-3 sm:gap-5 lg:grid-cols-[400px_1fr_280px]">
+        {/* LEFT (or top on mobile): Input form */}
+        <section className="panel p-3 sm:p-4 space-y-4 sm:space-y-5 lg:max-h-[calc(100vh-120px)] lg:overflow-y-auto lg:sticky lg:top-[60px] lg:self-start order-2 lg:order-1">
+          {/* Preset selector — horizontal scroll on mobile */}
           <div>
             <div className="section-label">Case presets</div>
-            <div className="flex flex-wrap gap-x-3 gap-y-1">
+            <div className="preset-scroll">
               {Object.entries(PRESETS).map(([k, v]) => (
                 <button
                   key={k}
@@ -358,8 +364,8 @@ export default function Home() {
             />
           </div>
 
-          {/* Action bar */}
-          <div className="flex gap-2 sticky bottom-0 bg-white pt-2 -mx-4 px-4 border-t border-[color:var(--c-border-subtle)]">
+          {/* Action bar — desktop only inline; mobile uses fixed bottom bar */}
+          <div className="hidden lg:flex gap-2 sticky bottom-0 bg-white pt-2 -mx-4 px-4 border-t border-[color:var(--c-border-subtle)]">
             <button onClick={submit} disabled={loading} className="btn btn-primary flex-1">
               {loading ? '分析中…' : '🧠 開始分析'}
             </button>
@@ -369,8 +375,8 @@ export default function Home() {
           </div>
         </section>
 
-        {/* CENTER: Output */}
-        <section className="panel p-5 min-h-[400px]">
+        {/* CENTER (or top on mobile): Output */}
+        <section className="panel p-3 sm:p-5 min-h-[200px] lg:min-h-[400px] order-1 lg:order-2">
           <div className="flex items-center justify-between mb-3">
             <h2 className="text-[15px] font-semibold">CDS Recommendation</h2>
             {output && (
@@ -406,9 +412,11 @@ export default function Home() {
           )}
 
           {!output && !loading && !error && (
-            <div className="text-sm text-[color:var(--c-text-tertiary)] py-12 text-center">
-              填寫左側資料 → 按「開始分析」<br />
-              或點上方 <span className="chip muted">C1–C7</span> Preset 快速試跑。
+            <div className="text-sm text-[color:var(--c-text-tertiary)] py-8 lg:py-12 text-center">
+              <span className="lg:hidden">填寫下方資料 → 按底部「開始分析」</span>
+              <span className="hidden lg:inline">填寫左側資料 → 按「開始分析」</span>
+              <br />
+              或點 <span className="chip muted">C1–C7</span> Preset 快速試跑。
             </div>
           )}
 
@@ -425,41 +433,113 @@ export default function Home() {
           )}
         </section>
 
-        {/* RIGHT: Session rail */}
-        <aside className="panel p-4 max-h-[calc(100vh-120px)] overflow-y-auto sticky top-4 self-start hidden lg:block">
-          <div className="section-label">Saved sessions ({sessions.length})</div>
-          {sessions.length === 0 && (
-            <div className="text-xs text-[color:var(--c-text-tertiary)] py-4">
-              還沒有儲存的 session。<br />
-              填完表單後點 「💾 Save」可保存。<br /><br />
-              <span className="text-[color:var(--c-warning)]">🔒 資料只存於本機瀏覽器 IndexedDB，不上傳。</span>
-            </div>
-          )}
-          <ul className="space-y-1">
-            {sessions.map((s) => (
-              <li key={s.id} className="border border-[color:var(--c-border-subtle)] rounded p-2 hover:bg-[color:var(--c-surface-1)]">
-                <div className="flex items-start gap-2">
-                  <button onClick={() => onLoadSession(s.id)} className="flex-1 text-left">
-                    <div className="text-[12.5px] font-semibold truncate">{s.label}</div>
-                    <div className="text-[11px] text-[color:var(--c-text-tertiary)] truncate font-mono">{summarize(s.form)}</div>
-                    <div className="text-[10px] text-[color:var(--c-text-muted)] mt-0.5 tabular">
-                      {new Date(s.updatedAt).toLocaleString('zh-TW', { dateStyle: 'short', timeStyle: 'short' })}
-                    </div>
-                  </button>
-                  <button
-                    onClick={() => onDeleteSession(s.id)}
-                    className="text-[color:var(--c-text-muted)] hover:text-[color:var(--c-critical)] text-xs px-1"
-                    title="Delete"
-                  >
-                    ✕
-                  </button>
-                </div>
-              </li>
-            ))}
-          </ul>
+        {/* RIGHT: Session rail (desktop only) */}
+        <aside className="panel p-4 max-h-[calc(100vh-120px)] overflow-y-auto sticky top-[60px] self-start hidden lg:block order-3">
+          <SessionList
+            sessions={sessions}
+            onLoad={onLoadSession}
+            onDelete={onDeleteSession}
+          />
         </aside>
       </div>
+
+      {/* Mobile bottom action bar */}
+      <div className="action-bar-mobile">
+        <button onClick={submit} disabled={loading} className="btn btn-primary flex-1">
+          {loading ? '分析中…' : '🧠 開始分析'}
+        </button>
+        <button
+          onClick={onSaveSession}
+          className="btn btn-ghost"
+          aria-label="Save session"
+          title="Save this case"
+        >
+          💾
+        </button>
+        <button
+          onClick={() => setSheetOpen(true)}
+          className="btn btn-ghost relative"
+          aria-label="Saved sessions"
+          title="Saved sessions"
+        >
+          📁
+          {sessions.length > 0 && (
+            <span className="absolute -top-1 -right-1 bg-[color:var(--c-action)] text-white text-[10px] rounded-full w-4 h-4 flex items-center justify-center font-semibold">
+              {sessions.length}
+            </span>
+          )}
+        </button>
+      </div>
+
+      {/* Mobile session sheet */}
+      {sheetOpen && (
+        <>
+          <div className="sheet-backdrop lg:hidden" onClick={() => setSheetOpen(false)} />
+          <div className="sheet lg:hidden" role="dialog" aria-label="Saved sessions">
+            <div className="sheet-handle" />
+            <div className="px-4 pb-4">
+              <div className="flex items-center justify-between mb-2">
+                <h3 className="font-semibold text-[15px]">Saved sessions</h3>
+                <button onClick={() => setSheetOpen(false)} className="text-[color:var(--c-text-tertiary)] text-xl leading-none px-2 py-1" aria-label="Close">
+                  ✕
+                </button>
+              </div>
+              <SessionList
+                sessions={sessions}
+                onLoad={onLoadAndCloseSheet}
+                onDelete={onDeleteSession}
+              />
+            </div>
+          </div>
+        </>
+      )}
     </main>
+  );
+}
+
+function SessionList({
+  sessions,
+  onLoad,
+  onDelete,
+}: {
+  sessions: Session[];
+  onLoad: (id: string) => void;
+  onDelete: (id: string) => void;
+}) {
+  return (
+    <>
+      <div className="section-label">Saved sessions ({sessions.length})</div>
+      {sessions.length === 0 && (
+        <div className="text-xs text-[color:var(--c-text-tertiary)] py-4">
+          還沒有儲存的 session。<br />
+          填完表單後點 「💾 Save」可保存。<br /><br />
+          <span className="text-[color:var(--c-warning)]">🔒 資料只存於本機瀏覽器 IndexedDB，不上傳。</span>
+        </div>
+      )}
+      <ul className="space-y-1">
+        {sessions.map((s) => (
+          <li key={s.id} className="border border-[color:var(--c-border-subtle)] rounded p-2 hover:bg-[color:var(--c-surface-1)]">
+            <div className="flex items-start gap-2">
+              <button onClick={() => onLoad(s.id)} className="flex-1 text-left min-w-0">
+                <div className="text-[13px] font-semibold truncate">{s.label}</div>
+                <div className="text-[11px] text-[color:var(--c-text-tertiary)] truncate font-mono">{summarize(s.form)}</div>
+                <div className="text-[10px] text-[color:var(--c-text-muted)] mt-0.5 tabular">
+                  {new Date(s.updatedAt).toLocaleString('zh-TW', { dateStyle: 'short', timeStyle: 'short' })}
+                </div>
+              </button>
+              <button
+                onClick={() => onDelete(s.id)}
+                className="text-[color:var(--c-text-muted)] hover:text-[color:var(--c-critical)] text-base px-2 py-1"
+                title="Delete"
+                aria-label="Delete session"
+              >
+                ✕
+              </button>
+            </div>
+          </li>
+        ))}
+      </ul>
+    </>
   );
 }
 
@@ -483,6 +563,11 @@ function Field({
       <span className="input-label">{label}</span>
       <input
         type="text"
+        inputMode={tabular ? 'decimal' : 'text'}
+        autoComplete="off"
+        autoCapitalize="none"
+        autoCorrect="off"
+        spellCheck={false}
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
@@ -525,6 +610,11 @@ function FieldFlagged({
       </span>
       <input
         type="text"
+        inputMode={tabular ? 'decimal' : 'text'}
+        autoComplete="off"
+        autoCapitalize="none"
+        autoCorrect="off"
+        spellCheck={false}
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
