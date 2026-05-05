@@ -235,6 +235,14 @@ export default function Home() {
     [form.gaWeeks]
   );
 
+  const currentTrimester = useMemo(() => {
+    const w = Number(form.gaWeeks);
+    if (!Number.isFinite(w)) return null;
+    if (w < 14) return 1;
+    if (w < 28) return 2;
+    return 3;
+  }, [form.gaWeeks]);
+
   const hardStops = useMemo(() => detectHardStops(form), [form]);
   const missing = useMemo(() => detectMissing(form), [form]);
 
@@ -356,11 +364,19 @@ export default function Home() {
 
           {/* Labs — with trimester-specific reference hints */}
           <div>
-            <div className="section-label flex items-center justify-between">
+            <div className="section-label flex items-center justify-between gap-2">
               <span>Labs</span>
-              <span className="text-[10px] font-normal normal-case tracking-normal text-[color:var(--c-text-muted)]">RR by GA</span>
+              {currentTrimester ? (
+                <span className="chip info shrink-0" title="依輸入的 GA 週數判定：T1 <14 wk · T2 14–27 wk · T3 ≥28 wk">
+                  T{currentTrimester} · GA {form.gaWeeks}w
+                </span>
+              ) : (
+                <span className="text-[10px] font-normal normal-case tracking-normal text-[color:var(--c-text-muted)]">
+                  填 GA 才會帶入 RR
+                </span>
+              )}
             </div>
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-2">
               <FieldFlagged label="TSH (mIU/L)" value={form.labs.tsh} onChange={(v) => update('labs.tsh', v)} placeholder="5.2" flag={flags.tsh} ref={refs.tsh} tabular />
               <FieldFlagged label="fT4 (ng/dL)" value={form.labs.ft4} onChange={(v) => update('labs.ft4', v)} placeholder="1.1" flag={flags.ft4} ref={refs.ft4} tabular />
               <FieldFlagged label="TT4 (µg/dL)" value={form.labs.tt4} onChange={(v) => update('labs.tt4', v)} placeholder="" flag={flags.tt4} ref={refs.tt4} tabular />
@@ -370,8 +386,13 @@ export default function Home() {
               <FieldFlagged label="TRAb / TSI" value={form.labs.trab} onChange={(v) => update('labs.trab', v)} placeholder="" flag={flags.trab} ref={refs.trab} tabular />
               <Field label="Other" value={form.labs.other} onChange={(v) => update('labs.other', v)} placeholder="UIC, etc." />
             </div>
-            <div className="mt-2 text-[10px] text-[color:var(--c-text-muted)] leading-relaxed">
-              {'ℹ Reference: ATA 2017 + Taiwan cohort (Pan LH 2025, BMC Pregnancy Childbirth)；TT4 7–16 wk +5%/wk、>16 wk ×1.5 ULN；如貴院 lab 提供 population-specific RR 請以 lab 為準。'}
+            <div className="mt-2 text-[11px] text-[color:var(--c-text-tertiary)] leading-relaxed space-y-1">
+              <div>
+                <strong>RR 依輸入 GA 自動切換</strong>：T1 (&lt;14 wk) · T2 (14–27 wk) · T3 (≥28 wk)
+              </div>
+              <div className="text-[color:var(--c-text-muted)]">
+                {'來源：ATA 2017 + Taiwan cohort (Pan LH 2025, BMC Pregnancy Childbirth)；TT4 7–16 wk 每週 +5%、>16 wk ×1.5 非孕 ULN。如貴院 lab 提供 population-specific RR 請以 lab 為準。'}
+              </div>
             </div>
           </div>
 
