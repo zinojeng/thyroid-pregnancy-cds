@@ -59,10 +59,6 @@ export default function RootLayout({
               >
                 GitHub
               </a>
-              <span className="hidden sm:inline">·</span>
-              <span className="text-[color:var(--c-text-muted)]">
-                Slide deck: 童綜合 2026/05 黃君睿
-              </span>
             </div>
           </div>
         </footer>
