@@ -306,24 +306,25 @@ export default function Home() {
             mobileView === 'output' ? 'hidden lg:block' : ''
           }`}
         >
-          {/* Preset selector — horizontal scroll on mobile, wrap on desktop */}
+          {/* Preset selector — 2-col grid on mobile, flex-wrap on desktop */}
           <div>
-            <div className="section-label">Case presets <span className="lg:hidden font-normal normal-case tracking-normal text-[10px] text-[color:var(--c-text-muted)]">← 可左右滑 →</span></div>
-            <div className="preset-scroll-wrap">
-              <div className="preset-scroll">
-                {Object.entries(PRESETS).map(([k, v]) => (
-                  <button
-                    key={k}
-                    onClick={() => loadPreset(k)}
-                    className={`btn btn-link ${activePreset === k ? 'active' : ''}`}
-                  >
-                    {v.label}
-                  </button>
-                ))}
-                <button onClick={reset} className="btn btn-link" style={{ color: 'var(--c-critical)' }}>
-                  Clear
+            <div className="section-label">Case presets</div>
+            <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">
+              {Object.entries(PRESETS).map(([k, v]) => (
+                <button
+                  key={k}
+                  onClick={() => loadPreset(k)}
+                  className={`preset-card ${activePreset === k ? 'active' : ''}`}
+                >
+                  {v.label}
                 </button>
-              </div>
+              ))}
+              <button
+                onClick={reset}
+                className="preset-card preset-card-clear"
+              >
+                Clear
+              </button>
             </div>
           </div>
 
