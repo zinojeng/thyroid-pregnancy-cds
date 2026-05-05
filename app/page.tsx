@@ -414,7 +414,7 @@ export default function Home() {
 
           {loading && (
             <div className="text-sm text-[color:var(--c-text-tertiary)] py-8">
-              ⏳ GPT-5.5 正在依 7-section template 生成建議，約需 20–60 秒…
+              ⏳ Gemini 3.1 Flash Lite 正在依 7-section template 生成建議，約需 10–30 秒…
             </div>
           )}
 

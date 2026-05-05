@@ -32,7 +32,7 @@ export default function RootLayout({
           <div className="mx-auto max-w-[1440px] px-4 py-3 text-[11px] text-[color:var(--c-text-tertiary)] flex flex-wrap gap-x-4">
             <span>Source: 童綜合 2026/05 黃君睿 + 10-role panel review</span>
             <span>·</span>
-            <span>Backend: OpenAI GPT-5.5</span>
+            <span>Backend: Gemini 3.1 Flash Lite</span>
             <span>·</span>
             <a className="underline hover:text-[color:var(--c-text-primary)]" href="https://github.com/zinojeng/thyroid-pregnancy-cds" target="_blank" rel="noreferrer">
               GitHub

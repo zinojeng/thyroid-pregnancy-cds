@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
-import OpenAI from 'openai';
+import { GoogleGenAI } from '@google/genai';
 import { loadKnowledgePack } from '@/lib/knowledge';
 
 export const runtime = 'nodejs';
 export const maxDuration = 120;
 
-const MODEL = process.env.OPENAI_MODEL ?? 'gpt-5.5';
+const MODEL = process.env.GEMINI_MODEL ?? 'gemini-3.1-flash-lite-preview';
 
 interface PatientPayload {
   age?: string;
@@ -109,10 +109,10 @@ You have access to a curated knowledge pack distilled from the 2026/05 童綜合
 
 export async function POST(req: NextRequest) {
   try {
-    const apiKey = process.env.OPENAI_API_KEY;
+    const apiKey = process.env.GEMINI_API_KEY ?? process.env.GOOGLE_API_KEY;
     if (!apiKey) {
       return NextResponse.json(
-        { error: 'OPENAI_API_KEY not configured on server.' },
+        { error: 'GEMINI_API_KEY not configured on server.' },
         { status: 500 }
       );
     }
@@ -121,28 +121,30 @@ export async function POST(req: NextRequest) {
     const knowledgePack = loadKnowledgePack();
     const patientBlock = formatPatient(payload);
 
-    const client = new OpenAI({ apiKey });
+    const ai = new GoogleGenAI({ apiKey });
 
-    const completion = await client.chat.completions.create({
+    const result = await ai.models.generateContent({
       model: MODEL,
-      messages: [
-        {
-          role: 'system',
-          content: SYSTEM_PROMPT_HEADER + '\n' + knowledgePack,
-        },
+      contents: [
         {
           role: 'user',
-          content: `請依下列病人資料，依 7-section template 給結構化建議。\n\n${patientBlock}`,
+          parts: [
+            { text: `請依下列病人資料，依 7-section template 給結構化建議。\n\n${patientBlock}` },
+          ],
         },
       ],
-      max_completion_tokens: 6000,
+      config: {
+        systemInstruction: SYSTEM_PROMPT_HEADER + '\n' + knowledgePack,
+        maxOutputTokens: 6000,
+        temperature: 0.4,
+      },
     });
 
-    const text = completion.choices?.[0]?.message?.content || '(empty response)';
+    const text = result.text || '(empty response)';
 
     return NextResponse.json({
       text,
-      usage: completion.usage,
+      usage: result.usageMetadata ?? null,
       model: MODEL,
     });
   } catch (err: any) {
