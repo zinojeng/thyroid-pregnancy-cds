@@ -368,8 +368,19 @@ export default function Home() {
             <div className="section-label flex items-center justify-between gap-2">
               <span>Labs</span>
               {currentTrimester ? (
-                <span className="chip info shrink-0" title="依輸入的 GA 週數判定：T1 <14 wk · T2 14–27 wk · T3 ≥28 wk">
-                  T{currentTrimester} · GA {form.gaWeeks}w
+                <span
+                  className={`chip shrink-0 ${
+                    currentTrimester === 1
+                      ? 'info'
+                      : currentTrimester === 2
+                      ? 'ok'
+                      : 'warning'
+                  }`}
+                  title="依輸入的 GA 週數判定：T1 <14 wk (info/blue) · T2 14–27 wk (ok/green) · T3 ≥28 wk (warning/amber)"
+                >
+                  T{currentTrimester}{' '}
+                  {currentTrimester === 1 ? '(<14w)' : currentTrimester === 2 ? '(14–27w)' : '(≥28w)'}
+                  {' · '}GA {form.gaWeeks}w
                 </span>
               ) : (
                 <span className="text-[10px] font-normal normal-case tracking-normal text-[color:var(--c-text-muted)]">
@@ -389,10 +400,13 @@ export default function Home() {
             </div>
             <div className="mt-2 text-[11px] text-[color:var(--c-text-tertiary)] leading-relaxed space-y-1">
               <div>
-                <strong>RR 依輸入 GA 自動切換</strong>：T1 (&lt;14 wk) · T2 (14–27 wk) · T3 (≥28 wk)
+                <strong>RR 依輸入 GA 自動切換</strong>：T1 (&lt;14 wk, 藍) · T2 (14–27 wk, 綠) · T3 (≥28 wk, 黃)
               </div>
               <div className="text-[color:var(--c-text-muted)]">
-                {'來源：ATA 2017 + Taiwan cohort (Pan LH 2025, BMC Pregnancy Childbirth)；TT4 7–16 wk 每週 +5%、>16 wk ×1.5 非孕 ULN。如貴院 lab 提供 population-specific RR 請以 lab 為準。'}
+                {'註：依 ATA 2017，trimester 間差異本來就小 — TSH 只有 LLN 動 0.1（ULN 4.0 不變）；fT4 主要是 assay 差異不是 trimester；TT4 在 wk 7–15 才動態變化、wk 16 後一律 ×1.5。所以 T2 vs T3 看起來幾乎一樣是正常的。'}
+              </div>
+              <div className="text-[color:var(--c-text-muted)]">
+                {'來源：ATA 2017 + Taiwan cohort (Pan LH 2025, BMC Pregnancy Childbirth)。如貴院 lab 提供 population-specific RR 請以 lab 為準。'}
               </div>
             </div>
           </div>
@@ -744,11 +758,23 @@ function FieldFlagged({
       />
       {refHint && (
         <span className="input-ref" title={refHint.source}>
-          {refHint.display}
+          {renderRef(refHint.display)}
           {refHint.note && <span className="block text-[color:var(--c-warning)]">{refHint.note}</span>}
         </span>
       )}
     </label>
+  );
+}
+
+// Render **bolded** segments in ref display string
+function renderRef(text: string) {
+  const parts = text.split(/\*\*(.+?)\*\*/g);
+  return parts.map((p, i) =>
+    i % 2 === 1 ? (
+      <strong key={i} className="text-[color:var(--c-text-primary)]">{p}</strong>
+    ) : (
+      <span key={i}>{p}</span>
+    )
   );
 }
 
@@ -784,7 +810,7 @@ function FieldHinted({
       />
       {refHint && (
         <span className="input-ref" title={refHint.source}>
-          {refHint.display}
+          {renderRef(refHint.display)}
         </span>
       )}
     </label>

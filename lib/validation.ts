@@ -130,16 +130,20 @@ export function getRefHint(
 
   switch (lab) {
     case 'tsh': {
-      if (t === 1) return { display: 'T1 ref 0.1–4.0 mIU/L', source: 'ATA 2017 / slide' };
-      if (t === 2) return { display: 'T2 ref 0.2–4.0 mIU/L', source: 'ATA 2017 / slide' };
-      if (t === 3) return { display: 'T3 ref 0.3–4.0 mIU/L', source: 'ATA 2017 / slide' };
+      // ATA 2017: only the LLN shifts slightly between trimesters; ULN stays 4.0
+      if (t === 1) return { display: 'T1 ref **0.1**–4.0 mIU/L', source: 'ATA 2017 / slide' };
+      if (t === 2) return { display: 'T2 ref **0.2**–4.0 mIU/L', source: 'ATA 2017 / slide' };
+      if (t === 3) return { display: 'T3 ref **0.3**–4.0 mIU/L', source: 'ATA 2017 / slide' };
       return { display: 'Pregnancy 0.1–4.0 mIU/L', source: 'ATA 2017' };
     }
     case 'ft4': {
       const aboveT1 = Number.isFinite(w) && w >= 16;
+      const tag = t ? `T${t}` : 'Preg';
       return {
-        display: 'fT4 ref 0.93–1.7 ng/dL (assay-specific)',
-        note: aboveT1 ? '⚠️ fT4 immunoassay 在 >16 wk 不可靠 → 改用 TT4×1.5 ULN' : undefined,
+        display: `${tag} fT4 ref 0.93–1.7 ng/dL (assay-specific)`,
+        note: aboveT1
+          ? '⚠️ fT4 immunoassay 在 >16 wk 不可靠 → 改用 TT4×1.5 ULN'
+          : 'Assay/lab-specific 變異大；T2/T3 通常 LLN 隨 GA ↓',
         source: 'assay-specific; 各實驗室 RR',
       };
     }
