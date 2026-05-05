@@ -5,12 +5,12 @@
 **🔴 Live demo**: https://thypregcds.zeabur.app
 
 [![Deploy on Zeabur](https://zeabur.com/button.svg)](https://zeabur.com/templates/Y14EBR?referralCode=zinojeng&YOUR_REPO=https%3A%2F%2Fgithub.com%2Fzinojeng%2Fthyroid-pregnancy-cds)
-[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fzinojeng%2Fthyroid-pregnancy-cds&env=ANTHROPIC_API_KEY&envDescription=Anthropic%20API%20key%20required%20for%20Claude%20API%20calls&project-name=thyroid-pregnancy-cds&repository-name=thyroid-pregnancy-cds)
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fzinojeng%2Fthyroid-pregnancy-cds&env=OPENAI_API_KEY&envDescription=OpenAI%20API%20key%20required%20for%20GPT%20calls&project-name=thyroid-pregnancy-cds&repository-name=thyroid-pregnancy-cds)
 
 兩種使用方式：
 
 1. **Claude Code Skill** — 在 Claude Code 中直接觸發（描述病人即可）
-2. **Web App** — Next.js 表單，給臨床醫師輸入結構化病人資料，後端用 Anthropic API 呼叫 Claude 並回傳 7-section 結構化建議
+2. **Web App** — Next.js 表單，給臨床醫師輸入結構化病人資料，後端用 OpenAI API 呼叫 GPT-5.5 並回傳 7-section 結構化建議
 
 ---
 
@@ -87,7 +87,7 @@ Claude 會自動載入 skill 並依 7-section template 回答。
 
 ```bash
 cp .env.example .env.local
-# 編輯 .env.local 填入 ANTHROPIC_API_KEY=sk-ant-...
+# 編輯 .env.local 填入 OPENAI_API_KEY=sk-...
 
 npm install
 npm run dev
@@ -98,7 +98,7 @@ npm run dev
 ### 介面
 - 左欄：結構化表單（demographics、history、meds、labs、symptoms、iodine 三題、free text）
 - 上方有 7 個 preset 按鈕（對應投影片 Case 1–7），點下去自動填入示範資料
-- 右欄：Claude 回應的 7-section markdown 輸出
+- 右欄：GPT-5.5 回應的 7-section markdown 輸出
 
 ### 7-Section 輸出（每次都遵守）
 1. 📋 病例 Summary
@@ -110,9 +110,9 @@ npm run dev
 7. ⚠️ 安全提醒 / Escalate Triggers
 
 ### 模型
-預設 `claude-sonnet-4-6`。可由環境變數 `ANTHROPIC_MODEL` 改用 `claude-opus-4-7`（更慢更貴但推理品質更好）或 `claude-haiku-4-5-20251001`（更快更便宜）。
+預設 `gpt-5.5`。可由環境變數 `OPENAI_MODEL` 改用 `gpt-5`、`gpt-5-mini`、`o3` 等。
 
-System prompt 用 **prompt caching**（`cache_control: ephemeral`）載入 ~30k token 的 knowledge pack，後續呼叫只計算病人資料 input，每次呼叫成本顯著下降。
+OpenAI server-side 自動 prefix caching：~30k token 的 knowledge pack 每次都被當前綴重複，命中後 input cost 顯著下降。
 
 ---
 
@@ -125,8 +125,8 @@ System prompt 用 **prompt caching**（`cache_control: ephemeral`）載入 ~30k 
 3. New Project → Deploy from GitHub → 選 `thyroid-pregnancy-cds`
 4. Zeabur 會自動偵測 Next.js 並建立 build pipeline
 5. 在 Service → Variables 加上：
-   - `ANTHROPIC_API_KEY` = `sk-ant-...`（必填）
-   - `ANTHROPIC_MODEL` = `claude-sonnet-4-6`（可選）
+   - `OPENAI_API_KEY` = `sk-...`（必填）
+   - `OPENAI_MODEL` = `gpt-5.5`（可選；預設即 gpt-5.5）
 6. Deploy → 完成
 
 ### 為什麼 Zeabur 不需要額外 config
@@ -143,7 +143,7 @@ Next.js 15 用 `output: 'standalone'`，Zeabur 的 Node.js 自動 builder 會：
 ```bash
 npm i -g vercel
 vercel
-# 設定 ANTHROPIC_API_KEY 環境變數
+# 設定 OPENAI_API_KEY 環境變數
 vercel --prod
 ```
 
@@ -152,14 +152,13 @@ vercel --prod
 ## 🛠️ 4. 安全與成本
 
 ### API 金鑰處理
-- `ANTHROPIC_API_KEY` 只存在 server side（`/api/analyze` route）
+- `OPENAI_API_KEY` 只存在 server side（`/api/analyze` route）
 - **絕不會** 暴露給瀏覽器
 - 部署時用 Zeabur / Vercel 的環境變數面板設定
 
 ### 預估成本
-- 每次 patient analysis 約 30k token system prompt（cache hit 後便宜 90%）+ ~500 token user input + ~2k token output
-- Claude Sonnet 4.6 估算：cache miss ~$0.10、cache hit ~$0.015 / 次
-- 100 個病例 / 月 約 USD $1.5–10（含 cache 變動）
+- 每次 patient analysis 約 30k token system prompt（OpenAI prefix-cache 命中後 input cost 大幅下降）+ ~500 token user input + ~2k token output
+- 實際成本依 GPT-5.5 計價而定；可改 `gpt-5-mini` 降本
 
 ### Hard safety stops
 SKILL.md 列出 7 個 hard stop 條件，model 會在這些情況下拒絕直接 recommendation 並要求 escalate to attending：

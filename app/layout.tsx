@@ -33,7 +33,7 @@ export default function RootLayout({
         <footer className="border-t border-slate-200 bg-white mt-12">
           <div className="mx-auto max-w-6xl px-4 py-4 text-xs text-slate-500">
             Source: 童綜合 2026/05 黃君睿《Updates on thyroid dysfunction and iodine nutrition in pregnancy》+ 10-role panel review.
-            Built with Claude Sonnet 4.6 + Next.js + Tailwind. <a className="underline" href="https://github.com/zinojeng/thyroid-pregnancy-cds" target="_blank" rel="noreferrer">GitHub</a>.
+            Built with OpenAI GPT-5.5 + Next.js + Tailwind. <a className="underline" href="https://github.com/zinojeng/thyroid-pregnancy-cds" target="_blank" rel="noreferrer">GitHub</a>.
           </div>
         </footer>
       </body>

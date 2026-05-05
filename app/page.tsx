@@ -356,7 +356,7 @@ export default function Home() {
             disabled={loading}
             className="w-full bg-clinical-600 hover:bg-clinical-700 text-white font-medium py-2 rounded disabled:bg-slate-400"
           >
-            {loading ? '⏳ 分析中（Claude Sonnet 4.6 思考中）...' : '🧠 開始分析'}
+            {loading ? '⏳ 分析中（GPT-5.5 思考中）...' : '🧠 開始分析'}
           </button>
         </section>
 

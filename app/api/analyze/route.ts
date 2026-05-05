@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
-import Anthropic from '@anthropic-ai/sdk';
+import OpenAI from 'openai';
 import { loadKnowledgePack } from '@/lib/knowledge';
 
 export const runtime = 'nodejs';
 export const maxDuration = 120;
 
-const MODEL = process.env.ANTHROPIC_MODEL ?? 'claude-sonnet-4-6';
+const MODEL = process.env.OPENAI_MODEL ?? 'gpt-5.5';
 
 interface PatientPayload {
   age?: string;
@@ -109,10 +109,10 @@ You have access to a curated knowledge pack distilled from the 2026/05 童綜合
 
 export async function POST(req: NextRequest) {
   try {
-    const apiKey = process.env.ANTHROPIC_API_KEY;
+    const apiKey = process.env.OPENAI_API_KEY;
     if (!apiKey) {
       return NextResponse.json(
-        { error: 'ANTHROPIC_API_KEY not configured on server.' },
+        { error: 'OPENAI_API_KEY not configured on server.' },
         { status: 500 }
       );
     }
@@ -121,35 +121,28 @@ export async function POST(req: NextRequest) {
     const knowledgePack = loadKnowledgePack();
     const patientBlock = formatPatient(payload);
 
-    const client = new Anthropic({ apiKey });
+    const client = new OpenAI({ apiKey });
 
-    const message = await client.messages.create({
+    const completion = await client.chat.completions.create({
       model: MODEL,
-      max_tokens: 4096,
-      system: [
-        {
-          type: 'text',
-          text: SYSTEM_PROMPT_HEADER + '\n' + knowledgePack,
-          cache_control: { type: 'ephemeral' },
-        },
-      ],
       messages: [
+        {
+          role: 'system',
+          content: SYSTEM_PROMPT_HEADER + '\n' + knowledgePack,
+        },
         {
           role: 'user',
           content: `請依下列病人資料，依 7-section template 給結構化建議。\n\n${patientBlock}`,
         },
       ],
+      max_completion_tokens: 6000,
     });
 
-    const text =
-      message.content
-        .filter((c): c is Anthropic.Messages.TextBlock => c.type === 'text')
-        .map((c) => c.text)
-        .join('\n') || '(empty response)';
+    const text = completion.choices?.[0]?.message?.content || '(empty response)';
 
     return NextResponse.json({
       text,
-      usage: message.usage,
+      usage: completion.usage,
       model: MODEL,
     });
   } catch (err: any) {
