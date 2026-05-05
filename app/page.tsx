@@ -90,6 +90,7 @@ export default function Home() {
   const [sessions, setSessions] = useState<Session[]>([]);
   const [activePreset, setActivePreset] = useState<string>('');
   const [sheetOpen, setSheetOpen] = useState(false);
+  const [mobileView, setMobileView] = useState<'input' | 'output'>('input');
   const draftDebounce = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Load draft on mount
@@ -164,6 +165,7 @@ export default function Home() {
     setLoading(true);
     setError('');
     setOutput('');
+    setMobileView('output'); // Auto-switch to result view on mobile
     try {
       const res = await fetch('/api/analyze', {
         method: 'POST',
@@ -241,9 +243,44 @@ export default function Home() {
         </div>
       )}
 
+      {/* Mobile tab switcher — only visible <lg */}
+      <div className="lg:hidden mb-3 flex panel p-1 gap-1" role="tablist">
+        <button
+          role="tab"
+          aria-selected={mobileView === 'input'}
+          onClick={() => setMobileView('input')}
+          className={`flex-1 h-9 text-[13px] font-semibold rounded transition-colors ${
+            mobileView === 'input'
+              ? 'bg-[color:var(--c-action)] text-white'
+              : 'text-[color:var(--c-text-secondary)]'
+          }`}
+        >
+          📝 病人資料
+        </button>
+        <button
+          role="tab"
+          aria-selected={mobileView === 'output'}
+          onClick={() => setMobileView('output')}
+          className={`flex-1 h-9 text-[13px] font-semibold rounded transition-colors relative ${
+            mobileView === 'output'
+              ? 'bg-[color:var(--c-action)] text-white'
+              : 'text-[color:var(--c-text-secondary)]'
+          }`}
+        >
+          📊 分析結果
+          {(output || loading) && mobileView !== 'output' && (
+            <span className="absolute top-1 right-2 w-2 h-2 bg-[color:var(--c-critical)] rounded-full" aria-hidden />
+          )}
+        </button>
+      </div>
+
       <div className="grid gap-3 sm:gap-5 lg:grid-cols-[400px_1fr_280px]">
-        {/* LEFT (or top on mobile): Input form */}
-        <section className="panel p-3 sm:p-4 space-y-4 sm:space-y-5 lg:max-h-[calc(100vh-120px)] lg:overflow-y-auto lg:sticky lg:top-[60px] lg:self-start order-2 lg:order-1">
+        {/* Input form — hidden on mobile when output tab active */}
+        <section
+          className={`panel p-3 sm:p-4 space-y-4 sm:space-y-5 lg:max-h-[calc(100vh-120px)] lg:overflow-y-auto lg:sticky lg:top-[60px] lg:self-start order-2 lg:order-1 ${
+            mobileView === 'output' ? 'hidden lg:block' : ''
+          }`}
+        >
           {/* Preset selector — horizontal scroll on mobile */}
           <div>
             <div className="section-label">Case presets</div>
@@ -375,8 +412,12 @@ export default function Home() {
           </div>
         </section>
 
-        {/* CENTER (or top on mobile): Output */}
-        <section className="panel p-3 sm:p-5 min-h-[200px] lg:min-h-[400px] order-1 lg:order-2">
+        {/* Output panel — hidden on mobile when input tab active */}
+        <section
+          className={`panel p-3 sm:p-5 min-h-[200px] lg:min-h-[400px] order-1 lg:order-2 ${
+            mobileView === 'input' ? 'hidden lg:block' : ''
+          }`}
+        >
           <div className="flex items-center justify-between mb-3">
             <h2 className="text-[15px] font-semibold">CDS Recommendation</h2>
             {output && (
@@ -413,7 +454,7 @@ export default function Home() {
 
           {!output && !loading && !error && (
             <div className="text-sm text-[color:var(--c-text-tertiary)] py-8 lg:py-12 text-center">
-              <span className="lg:hidden">填寫下方資料 → 按底部「開始分析」</span>
+              <span className="lg:hidden">切到「📝 病人資料」分頁填表 → 按底部「開始分析」</span>
               <span className="hidden lg:inline">填寫左側資料 → 按「開始分析」</span>
               <br />
               或點 <span className="chip muted">C1–C7</span> Preset 快速試跑。
@@ -443,32 +484,64 @@ export default function Home() {
         </aside>
       </div>
 
-      {/* Mobile bottom action bar */}
+      {/* Mobile bottom action bar — context-aware by mobileView */}
       <div className="action-bar-mobile">
-        <button onClick={submit} disabled={loading} className="btn btn-primary flex-1">
-          {loading ? '分析中…' : '🧠 開始分析'}
-        </button>
-        <button
-          onClick={onSaveSession}
-          className="btn btn-ghost"
-          aria-label="Save session"
-          title="Save this case"
-        >
-          💾
-        </button>
-        <button
-          onClick={() => setSheetOpen(true)}
-          className="btn btn-ghost relative"
-          aria-label="Saved sessions"
-          title="Saved sessions"
-        >
-          📁
-          {sessions.length > 0 && (
-            <span className="absolute -top-1 -right-1 bg-[color:var(--c-action)] text-white text-[10px] rounded-full w-4 h-4 flex items-center justify-center font-semibold">
-              {sessions.length}
-            </span>
-          )}
-        </button>
+        {mobileView === 'input' ? (
+          <>
+            <button onClick={submit} disabled={loading} className="btn btn-primary flex-1">
+              {loading ? '分析中…' : '🧠 開始分析'}
+            </button>
+            <button
+              onClick={onSaveSession}
+              className="btn btn-ghost"
+              aria-label="Save session"
+              title="Save this case"
+            >
+              💾
+            </button>
+            <button
+              onClick={() => setSheetOpen(true)}
+              className="btn btn-ghost relative"
+              aria-label="Saved sessions"
+              title="Saved sessions"
+            >
+              📁
+              {sessions.length > 0 && (
+                <span className="absolute -top-1 -right-1 bg-[color:var(--c-action)] text-white text-[10px] rounded-full w-4 h-4 flex items-center justify-center font-semibold">
+                  {sessions.length}
+                </span>
+              )}
+            </button>
+          </>
+        ) : (
+          <>
+            <button
+              onClick={() => setMobileView('input')}
+              className="btn btn-ghost flex-1"
+              aria-label="Back to input"
+            >
+              ← 編輯資料
+            </button>
+            {output && (
+              <button
+                onClick={() => navigator.clipboard.writeText(output)}
+                className="btn btn-ghost"
+                aria-label="Copy output"
+                title="Copy markdown"
+              >
+                📋
+              </button>
+            )}
+            <button
+              onClick={onSaveSession}
+              className="btn btn-ghost"
+              aria-label="Save session"
+              title="Save this case + result"
+            >
+              💾
+            </button>
+          </>
+        )}
       </div>
 
       {/* Mobile session sheet */}
