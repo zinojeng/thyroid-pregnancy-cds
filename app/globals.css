@@ -87,6 +87,15 @@ textarea.input { height: auto; padding: 8px 10px; line-height: 1.5; }
   font-weight: 500;
 }
 
+.input-ref {
+  display: block;
+  font-size: 10px;
+  color: var(--c-text-muted);
+  margin-top: 2px;
+  line-height: 1.35;
+  font-variant-numeric: tabular-nums;
+}
+
 /* Range chip */
 .chip {
   display: inline-flex;

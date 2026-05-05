@@ -86,6 +86,94 @@ export function flagTRAb(value: string | undefined, gaWeeks?: string): FieldFlag
   return { level: 'ok', text: 'negative' };
 }
 
+// ---- TT4 flag (GA-aware) ----
+// Non-pregnant TT4 ULN ~ 11.7 µg/dL.
+// 7–16 wk: ULN rises 5%/wk above non-preg ULN (so wk 7 = +5%, wk 8 = +10%, ... wk 16 = +50%).
+// >16 wk: ULN = 1.5 × non-preg ULN (~17.6 µg/dL).
+// Source: ATA 2017 + slide deck.
+const TT4_NONPREG_LO = 5.4;
+const TT4_NONPREG_HI = 11.7;
+
+function tt4UpperFor(gaWeeks?: string): number {
+  const w = Number(gaWeeks);
+  if (!Number.isFinite(w) || w < 7) return TT4_NONPREG_HI;
+  if (w >= 16) return TT4_NONPREG_HI * 1.5;
+  // 7–15 weeks: +5% per week starting wk 7
+  return TT4_NONPREG_HI * (1 + 0.05 * (w - 6));
+}
+
+export function flagTT4(value: string | undefined, gaWeeks?: string): FieldFlag | null {
+  if (!value) return null;
+  const n = SAFE_NUM(value);
+  if (n === null) return { level: 'muted', text: 'unparsable' };
+  const hi = tt4UpperFor(gaWeeks);
+  const lo = TT4_NONPREG_LO; // lower bound stays similar
+  if (n > hi * 1.3) return { level: 'critical', text: `↑↑ TT4 high`, hint: 'Severe thyrotoxicosis — escalate' };
+  if (n > hi) return { level: 'warning', text: `↑ above ${hi.toFixed(1)}`, hint: 'GA-adjusted ULN exceeded' };
+  if (n < lo) return { level: 'warning', text: `↓ low`, hint: 'Maternal hypothyroxinemia' };
+  return { level: 'ok', text: 'in range' };
+}
+
+// ---- Reference-range hint (display string for UI) ----
+export interface RefHint {
+  display: string;
+  note?: string;
+  source: string;
+}
+
+export function getRefHint(
+  lab: 'tsh' | 'ft4' | 'tt4' | 'tpoab' | 'trab' | 'tt3' | 'tgab',
+  gaWeeks?: string
+): RefHint | null {
+  const t = getTrimester(gaWeeks);
+  const w = Number(gaWeeks);
+
+  switch (lab) {
+    case 'tsh': {
+      if (t === 1) return { display: 'T1 ref 0.1–4.0 mIU/L', source: 'ATA 2017 / slide' };
+      if (t === 2) return { display: 'T2 ref 0.2–4.0 mIU/L', source: 'ATA 2017 / slide' };
+      if (t === 3) return { display: 'T3 ref 0.3–4.0 mIU/L', source: 'ATA 2017 / slide' };
+      return { display: 'Pregnancy 0.1–4.0 mIU/L', source: 'ATA 2017' };
+    }
+    case 'ft4': {
+      const aboveT1 = Number.isFinite(w) && w >= 16;
+      return {
+        display: 'fT4 ref 0.93–1.7 ng/dL (assay-specific)',
+        note: aboveT1 ? '⚠️ fT4 immunoassay 在 >16 wk 不可靠 → 改用 TT4×1.5 ULN' : undefined,
+        source: 'assay-specific; 各實驗室 RR',
+      };
+    }
+    case 'tt4': {
+      if (!Number.isFinite(w) || w < 7) {
+        return { display: 'Non-preg TT4 5.4–11.7 µg/dL', source: 'ATA 2017' };
+      }
+      if (w >= 16) {
+        return {
+          display: `>16 wk: ULN ~${(TT4_NONPREG_HI * 1.5).toFixed(1)} µg/dL (×1.5)`,
+          source: 'ATA 2017 / slide',
+        };
+      }
+      const pct = Math.round((w - 6) * 5);
+      const upper = TT4_NONPREG_HI * (1 + pct / 100);
+      return {
+        display: `Wk ${w}: ULN ~${upper.toFixed(1)} µg/dL (+${pct}%)`,
+        source: 'ATA 2017 / slide',
+      };
+    }
+    case 'tt3':
+      return { display: 'Non-preg 80–200 ng/dL; TT3/TT4 >20 → Graves likely', source: 'assay-specific' };
+    case 'tpoab':
+      return { display: 'Pos > ~34 IU/mL (assay-specific)', source: '各實驗室 cutoff' };
+    case 'tgab':
+      return { display: 'Pos > ~115 IU/mL (assay-specific)', source: '各實驗室 cutoff' };
+    case 'trab':
+      return {
+        display: 'Pos > ~1.75 IU/L; >3× ULN → fetal scan; >5× ULN → hard-stop',
+        source: 'ATA 2017',
+      };
+  }
+}
+
 // ---- Hard-stop pre-flight ----
 export interface HardStop {
   trigger: string;

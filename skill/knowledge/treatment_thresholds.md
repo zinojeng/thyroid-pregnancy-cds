@@ -1,5 +1,32 @@
 # Treatment Thresholds
 
+## Trimester-specific Reference Ranges（速查）
+
+| Lab | T1 (<14 wk) | T2 (14–28 wk) | T3 (≥28 wk) | 備註 |
+|---|---|---|---|---|
+| **TSH** | 0.1–4.0 mIU/L | 0.2–4.0 mIU/L | 0.3–4.0 mIU/L | ATA 2017 / 投影片 Slide 5 |
+| **fT4** | 0.93–1.7 ng/dL | (assay-specific) | (assay-specific) | ⚠️ fT4 immunoassay 在 T2/T3 不可靠（TBG 干擾），>16 wk 改用 TT4×1.5 ULN |
+| **TT4** | (5–11.7 µg/dL non-preg basis) | 7–16 wk: ULN 上升 +5%/wk；16 wk +50% | >16 wk: 1.5× non-preg ULN ≈ 17.6 | ATA 2017 / Slide 5 |
+| **TT3 / TT4 ratio** | >20 偏向 Graves | — | — | ng/μg；GTT 多 <20 |
+| **TPOAb** | Pos > ~34 IU/mL | (assay-specific) | (assay-specific) | 各廠牌 cutoff 差異大 |
+| **TgAb** | Pos > ~115 IU/mL | (assay-specific) | (assay-specific) | 各廠牌 cutoff 差異大 |
+| **TRAb / TSI** | Pos > ~1.75 IU/L；>3× ULN → fetal scan；**>5× ULN = hard-stop** | 同上 | 同上 | ATA 2017；third-generation TSI 較敏感 |
+| **UIC（族群 median）** | 150–249 µg/L 充足；台灣 NAHSIT-PW 2017–2019 中位 148–156；Pan LH 2025: T1/T2/T3 156.3 / 146.2 / 169.9 | 同左 | 同左 | spot UIC 個體 CV 30–40%，**不可用於個別孕婦診斷** |
+
+### 來源
+- **ATA 2017** — Thyroid 27(3):315-389
+- **ACOG Practice Bulletin 223** — Obstet Gynecol 2020;135(6):e261-e274
+- **Pan LH et al. 2025** — BMC Pregnancy Childbirth 25(1):323（Taiwan cohort, trimester-specific）
+- **NAHSIT-PW 2017–2019** — Jane C-J Chao et al.（Taiwan iodine cohort）
+
+> 若實驗室提供 population-specific / assay-specific RR，**以 lab 為準**。上述為通用 fallback。
+
+## fT4 在孕期的限制（重要）
+- fT4 immunoassays 受 TBG 上升 + albumin 下降影響，T2/T3 數值會被低估
+- **>16 wk 建議改用 TT4 × 1.5 ULN** 作為 hyperthyroxinemia/hypothyroxinemia 判讀
+- LC-MS/MS fT4 不受 TBG 影響但臨床少做
+- 第一孕期 fT4 仍是 standard，但需配合 TSH 與症狀整體判讀
+
 ## SCH / hypothyroidism 治療閾值（2017 ATA + 2024 ASRM 整合）
 
 | 情境 | 治療建議 |

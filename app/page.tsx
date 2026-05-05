@@ -10,7 +10,10 @@ import {
   flagTPOAb,
   flagTRAb,
   flagTSH,
+  flagTT4,
+  getRefHint,
   type FieldFlag,
+  type RefHint,
 } from '@/lib/validation';
 import {
   clearDraft,
@@ -212,10 +215,24 @@ export default function Home() {
     () => ({
       tsh: flagTSH(form.labs.tsh, form.gaWeeks),
       ft4: flagFT4(form.labs.ft4, form.gaWeeks),
+      tt4: flagTT4(form.labs.tt4, form.gaWeeks),
       tpoab: flagTPOAb(form.labs.tpoab),
       trab: flagTRAb(form.labs.trab, form.gaWeeks),
     }),
-    [form.labs.tsh, form.labs.ft4, form.labs.tpoab, form.labs.trab, form.gaWeeks]
+    [form.labs.tsh, form.labs.ft4, form.labs.tt4, form.labs.tpoab, form.labs.trab, form.gaWeeks]
+  );
+
+  const refs = useMemo(
+    () => ({
+      tsh: getRefHint('tsh', form.gaWeeks),
+      ft4: getRefHint('ft4', form.gaWeeks),
+      tt4: getRefHint('tt4', form.gaWeeks),
+      tt3: getRefHint('tt3'),
+      tpoab: getRefHint('tpoab'),
+      tgab: getRefHint('tgab'),
+      trab: getRefHint('trab'),
+    }),
+    [form.gaWeeks]
   );
 
   const hardStops = useMemo(() => detectHardStops(form), [form]);
@@ -337,18 +354,24 @@ export default function Home() {
             />
           </div>
 
-          {/* Labs */}
+          {/* Labs — with trimester-specific reference hints */}
           <div>
-            <div className="section-label">Labs</div>
+            <div className="section-label flex items-center justify-between">
+              <span>Labs</span>
+              <span className="text-[10px] font-normal normal-case tracking-normal text-[color:var(--c-text-muted)]">RR by GA</span>
+            </div>
             <div className="grid grid-cols-2 gap-2">
-              <FieldFlagged label="TSH (mIU/L)" value={form.labs.tsh} onChange={(v) => update('labs.tsh', v)} placeholder="5.2" flag={flags.tsh} tabular />
-              <FieldFlagged label="fT4 (ng/dL)" value={form.labs.ft4} onChange={(v) => update('labs.ft4', v)} placeholder="1.1" flag={flags.ft4} tabular />
-              <Field label="TT4" value={form.labs.tt4} onChange={(v) => update('labs.tt4', v)} placeholder="" tabular />
-              <Field label="TT3" value={form.labs.tt3} onChange={(v) => update('labs.tt3', v)} placeholder="" tabular />
-              <FieldFlagged label="TPOAb (IU/mL)" value={form.labs.tpoab} onChange={(v) => update('labs.tpoab', v)} placeholder="" flag={flags.tpoab} tabular />
-              <Field label="TgAb (IU/mL)" value={form.labs.tgab} onChange={(v) => update('labs.tgab', v)} placeholder="" tabular />
-              <FieldFlagged label="TRAb / TSI" value={form.labs.trab} onChange={(v) => update('labs.trab', v)} placeholder="" flag={flags.trab} tabular />
+              <FieldFlagged label="TSH (mIU/L)" value={form.labs.tsh} onChange={(v) => update('labs.tsh', v)} placeholder="5.2" flag={flags.tsh} ref={refs.tsh} tabular />
+              <FieldFlagged label="fT4 (ng/dL)" value={form.labs.ft4} onChange={(v) => update('labs.ft4', v)} placeholder="1.1" flag={flags.ft4} ref={refs.ft4} tabular />
+              <FieldFlagged label="TT4 (µg/dL)" value={form.labs.tt4} onChange={(v) => update('labs.tt4', v)} placeholder="" flag={flags.tt4} ref={refs.tt4} tabular />
+              <FieldHinted label="TT3 (ng/dL)" value={form.labs.tt3} onChange={(v) => update('labs.tt3', v)} placeholder="" ref={refs.tt3} tabular />
+              <FieldFlagged label="TPOAb (IU/mL)" value={form.labs.tpoab} onChange={(v) => update('labs.tpoab', v)} placeholder="" flag={flags.tpoab} ref={refs.tpoab} tabular />
+              <FieldHinted label="TgAb (IU/mL)" value={form.labs.tgab} onChange={(v) => update('labs.tgab', v)} placeholder="" ref={refs.tgab} tabular />
+              <FieldFlagged label="TRAb / TSI" value={form.labs.trab} onChange={(v) => update('labs.trab', v)} placeholder="" flag={flags.trab} ref={refs.trab} tabular />
               <Field label="Other" value={form.labs.other} onChange={(v) => update('labs.other', v)} placeholder="UIC, etc." />
+            </div>
+            <div className="mt-2 text-[10px] text-[color:var(--c-text-muted)] leading-relaxed">
+              {'ℹ Reference: ATA 2017 + Taiwan cohort (Pan LH 2025, BMC Pregnancy Childbirth)；TT4 7–16 wk +5%/wk、>16 wk ×1.5 ULN；如貴院 lab 提供 population-specific RR 請以 lab 為準。'}
             </div>
           </div>
 
@@ -658,6 +681,7 @@ function FieldFlagged({
   onChange,
   placeholder,
   flag,
+  ref: refHint,
   tabular,
 }: {
   label: string;
@@ -665,6 +689,7 @@ function FieldFlagged({
   onChange: (v: string) => void;
   placeholder?: string;
   flag: FieldFlag | null;
+  ref?: RefHint | null;
   tabular?: boolean;
 }) {
   const cls =
@@ -695,6 +720,51 @@ function FieldFlagged({
         placeholder={placeholder}
         className={`input ${tabular ? 'tabular' : ''} ${cls}`}
       />
+      {refHint && (
+        <span className="input-ref" title={refHint.source}>
+          {refHint.display}
+          {refHint.note && <span className="block text-[color:var(--c-warning)]">{refHint.note}</span>}
+        </span>
+      )}
+    </label>
+  );
+}
+
+function FieldHinted({
+  label,
+  value,
+  onChange,
+  placeholder,
+  ref: refHint,
+  tabular,
+}: {
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
+  placeholder?: string;
+  ref?: RefHint | null;
+  tabular?: boolean;
+}) {
+  return (
+    <label className="block min-w-0">
+      <span className="input-label truncate">{label}</span>
+      <input
+        type="text"
+        inputMode={tabular ? 'decimal' : 'text'}
+        autoComplete="off"
+        autoCapitalize="none"
+        autoCorrect="off"
+        spellCheck={false}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder={placeholder}
+        className={`input ${tabular ? 'tabular' : ''}`}
+      />
+      {refHint && (
+        <span className="input-ref" title={refHint.source}>
+          {refHint.display}
+        </span>
+      )}
     </label>
   );
 }
