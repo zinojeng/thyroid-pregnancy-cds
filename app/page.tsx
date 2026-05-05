@@ -227,7 +227,7 @@ export default function Home() {
   };
 
   return (
-    <main className="mx-auto max-w-[1440px] px-3 sm:px-4 py-3 sm:py-5 pb-[80px] lg:pb-5">
+    <main className="mx-auto max-w-[1440px] px-3 sm:px-4 py-3 sm:py-5 pb-[80px] lg:pb-5 overflow-x-hidden">
       {/* Hard-stop banner */}
       {hardStops.length > 0 && (
         <div className="mb-3 sm:mb-4 banner critical">
@@ -300,13 +300,13 @@ export default function Home() {
             </div>
           </div>
 
-          {/* Demographics */}
+          {/* Demographics — 3-col on mobile (Age/G/P then GA wk/d), 5-col on tablet+ */}
           <div>
             <div className="section-label">Demographics</div>
-            <div className="grid grid-cols-5 gap-2">
-              <Field label="Age" value={form.age} onChange={(v) => update('age', v)} placeholder="32" />
-              <Field label="G" value={form.gravidity} onChange={(v) => update('gravidity', v)} placeholder="1" />
-              <Field label="P" value={form.parity} onChange={(v) => update('parity', v)} placeholder="0" />
+            <div className="grid grid-cols-3 sm:grid-cols-5 gap-2">
+              <Field label="Age" value={form.age} onChange={(v) => update('age', v)} placeholder="32" tabular />
+              <Field label="G" value={form.gravidity} onChange={(v) => update('gravidity', v)} placeholder="1" tabular />
+              <Field label="P" value={form.parity} onChange={(v) => update('parity', v)} placeholder="0" tabular />
               <Field label="GA wk" value={form.gaWeeks} onChange={(v) => update('gaWeeks', v)} placeholder="10" tabular />
               <Field label="GA d" value={form.gaDays} onChange={(v) => update('gaDays', v)} placeholder="2" tabular />
             </div>
@@ -632,8 +632,8 @@ function Field({
   tabular?: boolean;
 }) {
   return (
-    <label className="block">
-      <span className="input-label">{label}</span>
+    <label className="block min-w-0">
+      <span className="input-label truncate">{label}</span>
       <input
         type="text"
         inputMode={tabular ? 'decimal' : 'text'}
@@ -672,11 +672,11 @@ function FieldFlagged({
       ? 'warn'
       : '';
   return (
-    <label className="block">
-      <span className="input-label flex items-center justify-between gap-2">
-        <span>{label}</span>
+    <label className="block min-w-0">
+      <span className="input-label flex items-center justify-between gap-2 flex-wrap">
+        <span className="truncate">{label}</span>
         {flag && flag.level !== 'muted' && (
-          <span className={`chip ${flag.level}`} title={flag.hint || ''}>
+          <span className={`chip ${flag.level} shrink-0`} title={flag.hint || ''}>
             {flag.text}
           </span>
         )}
